@@ -1,0 +1,6 @@
+python-telegram-bot==21.10
+APScheduler==3.10.4
+httpx
+pg8000==1.31.2
+telethon==1.40.0
+PySocks==1.7.1

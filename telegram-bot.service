@@ -1,0 +1,41 @@
+[Unit]
+Description=Telegram Hunting Bot - High Performance Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/Bot-telegram-
+
+# ======= متغيرات الأداء =======
+Environment=PYTHONUNBUFFERED=1
+# رفع حد خيوط بايثون لمنع تعليق البوتات تحت الضغط العالي
+Environment=PYTHONTHREADPOOLTHREADLIMIT=128
+# تحسين أداء gc في بايثون
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+# متغيرات البوت (عدّلها بقيمك الحقيقية)
+# Environment=DATABASE_URL=postgresql://user:pass@host:5432/dbname
+# Environment=MAIN_BOT_TOKEN=your_token_here
+# Environment=ADMIN_ID=your_admin_id
+
+# ملف المتغيرات البيئية إن وُجد
+# EnvironmentFile=/root/Bot-telegram-/.env
+
+ExecStart=/usr/bin/python3 -O main_bot.py
+Restart=always
+RestartSec=3
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# حدود الموارد
+LimitNOFILE=65536
+LimitNPROC=4096
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=telegram-bot
+
+[Install]
+WantedBy=multi-user.target
