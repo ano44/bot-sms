@@ -159,10 +159,10 @@ def _get_cache_lock(user_id):
 async def start_user_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = "🔰 مرحباً بك في بوت صيد الأرقام 🔰\n\nاختر أحد الخيارات أدناه للبدء:"
     keyboard = [
-        [InlineKeyboardButton("‹ ايقاف الصيد ›", callback_data="stop_hunting"), InlineKeyboardButton("‹ تشغيل الصيد ›", callback_data="start_hunting")],
-        [InlineKeyboardButton("‹ إدارة الدول ›", callback_data="manage_countries"), InlineKeyboardButton("‹ اضافه دوله ›", callback_data="add_country_page_0")],
-        [InlineKeyboardButton("‹ اعدادات ›", callback_data="bot_settings")],
-        [InlineKeyboardButton("‹ احصائيات عمليات الشراء الناجحه ›", callback_data="purchase_stats")]
+        [InlineKeyboardButton("⏸ ايقاف الصيد", callback_data="stop_hunting"), InlineKeyboardButton("▶️ تشغيل الصيد", callback_data="start_hunting")],
+        [InlineKeyboardButton("🌍 إدارة الدول", callback_data="manage_countries"), InlineKeyboardButton("➕ اضافة دولة", callback_data="add_country_page_0")],
+        [InlineKeyboardButton("⚙️ الإعدادات", callback_data="bot_settings")],
+        [InlineKeyboardButton("📊 إحصائيات الشراء", callback_data="purchase_stats")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     if update.message:
@@ -377,33 +377,43 @@ async def user_bot_callback_handler(update: Update, context: ContextTypes.DEFAUL
         channel = await asyncio.to_thread(db.get_hunting_channel, user_id)
         countries = await asyncio.to_thread(db.get_user_countries, user_id)
         if not active_accounts:
-            await query.message.reply_text("❌ لا يمكن تشغيل الصيد! ...")
+            await query.answer("❌ لا يمكن تشغيل الصيد! أضف حساب DurianRCS نشط أولاً.", show_alert=True)
             return
         if not channel:
-            await query.message.reply_text("❌ لا يمكن تشغيل الصيد! ...")
+            await query.answer("❌ لا يمكن تشغيل الصيد! أضف قناة صيد في الإعدادات أولاً.", show_alert=True)
             return
         if not countries:
-            await query.message.reply_text("❌ لا يمكن تشغيل الصيد! ...")
+            await query.answer("❌ لا يمكن تشغيل الصيد! أضف دولة واحدة على الأقل.", show_alert=True)
             return
+
+        # --- منع تشغيل جوب مزدوج لنفس المستخدم ---
+        current_jobs = context.job_queue.get_jobs_by_name(f"hunt_{user_id}")
+        active_jobs = [j for j in current_jobs if not j.removed]
+        if active_jobs:
+            await query.answer("ℹ️ الصيد يعمل بالفعل لهذا الحساب.", show_alert=True)
+            return
+
+        # جلب الرصيد قبل البدء
         username_first = active_accounts[0][0]
         api_key_first = active_accounts[0][1]
         balance = await DurianAPI.get_balance_by_name(username_first, api_key_first)
-        current_jobs = context.job_queue.get_jobs_by_name(f"hunt_{user_id}")
-        if current_jobs:
-            await query.message.reply_text("ℹ️ الصيد يعمل بالفعل.")
-            return
-
-        bot_owner_id = user_id
+        if balance <= 0:
+            await query.answer(f"⚠️ رصيد الحساب ({username_first}) = {balance}. تأكد من شحن الرصيد قبل بدء الصيد.", show_alert=True)
+            # لا نوقف التشغيل، قد تكون هناك حسابات أخرى بها رصيد
 
         context.job_queue.run_repeating(
             check_and_hunt_numbers, interval=1, first=1, user_id=user_id,
             name=f"hunt_{user_id}"
         )
         await asyncio.to_thread(db.set_hunting_status, user_id, 1)
-        accounts_str = "\n".join([f"👤 {u}" for u, _ in active_accounts])
-        # تنبيه منبثق بنجاح التشغيل
+        accounts_names = ', '.join([u for u, _ in active_accounts])
+        countries_count = len(countries)
         await query.answer(
-            f"🚀 تم تشغيل الصيد بنجاح!\nالحسابات: {', '.join([u for u, _ in active_accounts])}\nالقناة: {channel}",
+            f"🚀 تم تشغيل الصيد بنجاح!\n"
+            f"👤 الحسابات: {accounts_names}\n"
+            f"🌍 الدول: {countries_count}\n"
+            f"📢 القناة: {channel}\n"
+            f"💰 الرصيد: {balance:.2f}",
             show_alert=True
         )
     elif data == "stop_hunting":
@@ -520,6 +530,41 @@ async def user_bot_callback_handler(update: Update, context: ContextTypes.DEFAUL
         await query.answer(f"✔️ تمت إضافة {country_name_with_emoji} بنجاح", show_alert=True)
         # لا نغير الصفحة، يبقى المستخدم في نفس قائمة الدول
         return
+    elif data == "purchase_stats":
+        # عرض إحصائيات الشراء الناجحة
+        try:
+            accounts = await asyncio.to_thread(db.get_active_site_accounts, user_id)
+            if not accounts:
+                await query.answer("❌ لا توجد حسابات مرتبطة.", show_alert=True)
+                return
+            stats_lines = []
+            for username, api_key in accounts:
+                balance = await DurianAPI.get_balance_by_name(username, api_key)
+                stats_lines.append(f"👤 {username}: 💰 {balance:.2f}")
+            stats_text = "\n".join(stats_lines) if stats_lines else "لا توجد بيانات"
+            await query.message.edit_text(
+                f"📊 **إحصائيات الحسابات:**\n\n{stats_text}",
+                parse_mode="Markdown",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 رجوع", callback_data="main_menu")]])
+            )
+        except Exception as e:
+            logger.error(f"Error in purchase_stats: {e}")
+            await query.answer("❌ خطأ في جلب الإحصائيات.", show_alert=True)
+        return
+
+    elif data == "desired_prefixes":
+        await query.message.edit_text(
+            "🔢 **ميزة الباديات المرغوبة (قيد التطوير)**\n\n"
+            "ستتيح لك هذه الميزة تصفية الأرقام حسب البادية (Prefix) مثل: 507، 512...",
+            parse_mode="Markdown",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 رجوع", callback_data="bot_settings")]])
+        )
+        return
+
+    elif data == "change_language":
+        await query.answer("🌍 اللغة العربية مُفعّلة بالفعل.", show_alert=True)
+        return
+
     elif data.startswith(("code_", "unban_", "cancel_", "rate_", "weak_")):
         parts = data.split("_", 2)
         if len(parts) < 3:
@@ -896,30 +941,34 @@ async def check_and_hunt_numbers(context: ContextTypes.DEFAULT_TYPE):
                     # --- فلتر number_type ---
                     if want_type == "banned" and not is_banned:
                         logger.info(
-                            f"[FILTER] {phone_number}: تم تجاهله - المستخدم يريد (محظور) فقط "
-                            f"لكن الحالة: {check_status}"
+                            f"[FILTER] {phone_number}: مرفوض - المستخدم يريد (محظور) فقط "
+                            f"لكن الحالة: {check_status} → سيتم إلغاؤه لاسترداد الرصيد"
                         )
+                        asyncio.create_task(DurianAPI.cancel_number(username, api_key, phone_number))
                         return
                     elif want_type == "working" and not is_working:
                         logger.info(
-                            f"[FILTER] {phone_number}: تم تجاهله - المستخدم يريد (شغال) فقط "
-                            f"لكن الحالة: {check_status}"
+                            f"[FILTER] {phone_number}: مرفوض - المستخدم يريد (شغال) فقط "
+                            f"لكن الحالة: {check_status} → سيتم إلغاؤه لاسترداد الرصيد"
                         )
+                        asyncio.create_task(DurianAPI.cancel_number(username, api_key, phone_number))
                         return
 
                     # --- فلتر session_status (يُطبَّق فقط على الأرقام الشغّالة غير المحظورة) ---
                     if not is_banned and not is_inaccurate:
                         if want_session == "has_session" and not has_session:
                             logger.info(
-                                f"[FILTER] {phone_number}: تم تجاهله - المستخدم يريد (لديه جلسة) فقط "
-                                f"لكن الحالة: {check_status}"
+                                f"[FILTER] {phone_number}: مرفوض - المستخدم يريد (لديه جلسة) فقط "
+                                f"لكن الحالة: {check_status} → سيتم إلغاؤه لاسترداد الرصيد"
                             )
+                            asyncio.create_task(DurianAPI.cancel_number(username, api_key, phone_number))
                             return
                         elif want_session == "no_session" and not no_session:
                             logger.info(
-                                f"[FILTER] {phone_number}: تم تجاهله - المستخدم يريد (بدون جلسة) فقط "
-                                f"لكن الحالة: {check_status}"
+                                f"[FILTER] {phone_number}: مرفوض - المستخدم يريد (بدون جلسة) فقط "
+                                f"لكن الحالة: {check_status} → سيتم إلغاؤه لاسترداد الرصيد"
                             )
+                            asyncio.create_task(DurianAPI.cancel_number(username, api_key, phone_number))
                             return
                     # ===== نهاية الفلترة =====
                 else:
