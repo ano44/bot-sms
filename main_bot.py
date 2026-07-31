@@ -367,15 +367,6 @@ async def show_admin_panel(update: Update):
             InlineKeyboardButton("➕ إضافة بروكسي", callback_data="adm_add_proxy")
         ],
         [
-            InlineKeyboardButton("🤖 ربط بوت فحص خارجي", callback_data="adm_checker_bot")
-        ],
-        [
-            InlineKeyboardButton("👑 تخصيص حساب المدير (Layer 4)", callback_data="adm_set_manager_acc")
-        ],
-        [
-            InlineKeyboardButton("🎯 إعداد رقم الفخ (Honeypot)", callback_data="adm_set_honeypot")
-        ],
-        [
             InlineKeyboardButton("⬅️ الواجهة الرئيسية", callback_data="main_menu")
         ]
     ]
