@@ -462,10 +462,18 @@ async def user_bot_callback_handler(update: Update, context: ContextTypes.DEFAUL
         return
 
     elif data.startswith("save_number_type_"):
-        # الصيغة: save_number_type_COUNTRYCODE_VALUE
-        parts = data.split("_")
-        country_code = parts[3]
-        value = parts[4]
+        suffix = data[len("save_number_type_"):]
+        if suffix.endswith("_working"):
+            value = "working"
+            country_code = suffix[:-8]
+        elif suffix.endswith("_banned"):
+            value = "banned"
+            country_code = suffix[:-7]
+        elif suffix.endswith("_all"):
+            value = "all"
+            country_code = suffix[:-4]
+        else:
+            return
         await asyncio.to_thread(db.update_country_settings, user_id, country_code, number_type=value)
         await query.answer("✔️ تم تحديث نوع الرقم", show_alert=True)
         await show_country_settings(update, user_id, country_code)
@@ -477,9 +485,18 @@ async def user_bot_callback_handler(update: Update, context: ContextTypes.DEFAUL
         return
 
     elif data.startswith("save_session_status_"):
-        parts = data.split("_")
-        country_code = parts[3]
-        value = parts[4]
+        suffix = data[len("save_session_status_"):]
+        if suffix.endswith("_no_session"):
+            value = "no_session"
+            country_code = suffix[:-11]
+        elif suffix.endswith("_has_session"):
+            value = "has_session"
+            country_code = suffix[:-12]
+        elif suffix.endswith("_all"):
+            value = "all"
+            country_code = suffix[:-4]
+        else:
+            return
         await asyncio.to_thread(db.update_country_settings, user_id, country_code, session_status=value)
         await query.answer("✔️ تم تحديث حالة الجلسة", show_alert=True)
         await show_country_settings(update, user_id, country_code)

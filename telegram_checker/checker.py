@@ -85,8 +85,8 @@ class FastCheckStrategy:
             return {"status": "HAS_SESSION", "phone": phone, "status_text": "⚠️ الرقم لديه جلسة"}
 
         except PhoneNumberUnoccupiedError:
-            # غير مسجّل – ننتقل للطبقة 3 للتأكيد
-            pass
+            logger.info(f"[L2] NO_SESSION: {phone}")
+            return {"status": "NO_SESSION", "phone": phone, "status_text": "🆕 غير مسجّل"}
 
         except PhoneNumberBannedError:
             return {"status": "BANNED", "phone": phone, "status_text": "📵 مـحـظـور"}
@@ -112,7 +112,8 @@ class FastCheckStrategy:
                 return {"status": "ACCOUNT_DISABLED", "phone": phone,
                         "status_text": "❌ حساب فاحص تالف"}
             if any(kw in err for kw in ["UNOCCUPIED", "NOT_FOUND", "NO USER"]):
-                pass  # نكمل للطبقة 3
+                logger.info(f"[L2] NO_SESSION: {phone}")
+                return {"status": "NO_SESSION", "phone": phone, "status_text": "🆕 غير مسجّل"}
 
         # ==================== الطبقة 3: SendCode (تأكيد نهائي) ====================
         logger.info(f"[L3] SendCode: {phone}")

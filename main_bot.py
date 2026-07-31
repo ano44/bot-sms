@@ -24,13 +24,17 @@ PHONE, CODE, PASSWORD = range(3)
 
 async def show_welcome(update: Update, user_name: str):
     text = (
-        f"😁👋 ❛ ≽ السلام عليكم ورحمة الله وبركاته ≼\n\n"
-        f"👤 ❛ ≽ حياك الله يا {user_name} 🎊، أهلاً وسهلاً ومرحباً بك. ≼\n\n"
-        f"🤖 ❛ ≽ البوت المميز والحصري في تقديم خدمة صيد الأرقام مع فك الحظر التلقائي عن الأرقام. ≼\n\n"
-        f"📮 ❛ ≽ كل ما عليك فقط أن تشترك في البوت لتبدأ رحلت صيد الأرقام العالمية والدولية 📱 ≼\n\n"
-        f"ماذا تنتظر...!؟\n≽ ≽ ≽ اضغط هنا وابدأ 🔻"
+        f"✨ أهلاً {user_name}! ✨\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🎯 مرحباً بك في بوت صيد الأرقام الاحترافي\n\n"
+        f"🔹 صيد أرقام هواتف دولية تلقائياً\n"
+        f"🔹 فحص حالة كل رقم (جلسة / حظر)\n"
+        f"🔹 نشر فوري في قناتك الخاصة\n"
+        f"🔹 دعم عشرات الدول\n\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"💡 للبدء، اشترك في إحدى الخطط المتاحة 👇"
     )
-    keyboard = [[InlineKeyboardButton("اشترك الان", callback_data="subscribe")]]
+    keyboard = [[InlineKeyboardButton("🚀 اشترك الآن وابدأ الصيد", callback_data="subscribe")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     if update.message:
         await update.message.reply_text(text, reply_markup=reply_markup)
@@ -273,15 +277,14 @@ async def handle_token(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await show_dashboard(update, user_id, user_name)
 
 async def show_dashboard(update: Update, user_id: int, user_name: str):
-    # ملاحظة: كنا نعرض "36 يوم" كقيمة افتراضية وهمية حتى عند عدم توفر أي بيانات اشتراك حقيقية،
-    # مما يوهم المستخدم برصيد أيام غير موجود فعلياً. الآن نعرض حالة صريحة "غير معروف/لا يوجد اشتراك"
-    # بدل رقم مُخترَع يبدو حقيقياً.
     days_left = "غير مشترك"
-    status = "⚪️ غير مربوط"
+    status = "🔴 متوقف"
+    status_emoji = "⚫"
     try:
         db_data = await asyncio.to_thread(db.get_bot, user_id)
         if db_data and len(db_data) >= 4:
             status = bot_manager.get_status(user_id)
+            status_emoji = "🟢" if bot_manager.is_running(user_id) else "🔴"
             expires_at = db_data[2]
             if expires_at:
                 if isinstance(expires_at, str):
@@ -289,29 +292,32 @@ async def show_dashboard(update: Update, user_id: int, user_name: str):
                 delta = expires_at.replace(tzinfo=None) - datetime.now(timezone.utc).replace(tzinfo=None)
                 days_left = f"{max(0, delta.days)} يوم"
     except Exception as e:
-        logger.error(f"[User: {user_id}] فشل جلب بيانات الاشتراك لعرضها في لوحة التحكم: {e}")
-        days_left = "تعذر التحقق حالياً"
+        logger.error(f"[User: {user_id}] فشل جلب بيانات الاشتراك: {e}")
+        days_left = "تعذر التحقق"
 
     text = (
-        f"👤 ⪪ حياك الله يا {user_name} 🦾، أهلاً وسهلاً ومرحباً بك.\n\n"
-        f"🟢 ⪪ لديك اشتراك نشط، يمكنك هنا تشغيل وإيقاف البوت الخاص بك ⪪ {status}\n\n"
-        f"⏰ ⪪ اشتراكك ⪪ {days_left} ⪪"
+        f"👋 مرحباً {user_name}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"{status_emoji} حالة البوت: {status}\n"
+        f"⏳ الاشتراك المتبقي: {days_left}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🎛 اختر ما تريد من القائمة أدناه:"
     )
 
     keyboard = [
-        [InlineKeyboardButton("🔑 توكن البوت", callback_data="show_token_info")],
         [
-            InlineKeyboardButton("إيقاف البوت ❌", callback_data="stop_bot"),
-            InlineKeyboardButton("تشغيل البوت ✅", callback_data="run_bot")
+            InlineKeyboardButton("▶️ تشغيل البوت", callback_data="run_bot"),
+            InlineKeyboardButton("⏹ إيقاف البوت", callback_data="stop_bot")
         ],
-        [InlineKeyboardButton("🔄 تجديد الإشتراك", callback_data="renew_subscription")],
+        [InlineKeyboardButton("🔑 توكن البوت", callback_data="show_token_info")],
+        [InlineKeyboardButton("🔄 تجديد الاشتراك", callback_data="renew_subscription")],
         [
-            InlineKeyboardButton("تواصل مع الدعم 🤙", callback_data="contact_support"),
-            InlineKeyboardButton("بوت فك الحظر ❗️", callback_data="unban_bot")
+            InlineKeyboardButton("💬 الدعم الفني", callback_data="contact_support"),
+            InlineKeyboardButton("🔓 فك الحظر", callback_data="unban_bot")
         ]
     ]
     if ADMIN_ID != 0 and user_id == ADMIN_ID:
-        keyboard.append([InlineKeyboardButton("👑 لوحة تحكم الإدارة 👑", callback_data="admin_panel")])
+        keyboard.append([InlineKeyboardButton("👑 لوحة تحكم الإدارة", callback_data="admin_panel")])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
     if update.message:
@@ -931,25 +937,41 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # ---------- أزرار الاشتراك للمستخدمين الجدد ----------
     elif query.data == "subscribe":
+        text = (
+            "💎 اختر خطة الاشتراك المناسبة:\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "🔹 حساب واحد  — 4$ / شهر\n"
+            "🔸 حسابين     — 6$ / شهر  (الأفضل)\n"
+            "💠 3 حسابات  — 8$ / شهر  (الأقوى)\n"
+            "━━━━━━━━━━━━━━━━━━━━━━\n"
+            "✅ الدفع فوري والتفعيل لحظي بعد التأكيد"
+        )
         keyboard = [
-            [InlineKeyboardButton("DurianRCS (حساب واحد) - 4$", callback_data="plan_1")],
-            [InlineKeyboardButton("DurianRCS (حسابين) - 6$", callback_data="plan_2")],
-            [InlineKeyboardButton("DurianRCS (3 حسابات) - 8$", callback_data="plan_3")],
+            [InlineKeyboardButton("🔹 حساب واحد — 4$", callback_data="plan_1")],
+            [InlineKeyboardButton("🔸 حسابين — 6$ ⭐ الأفضل", callback_data="plan_2")],
+            [InlineKeyboardButton("💠 3 حسابات — 8$ 🔥", callback_data="plan_3")],
         ]
-        await query.message.edit_text("اختر خطة الاشتراك:", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
         return
 
     elif query.data.startswith("plan_"):
         plan_num = query.data.split("_")[1]
         context.user_data["selected_plan"] = plan_num
         prices = {"1": "4", "2": "6", "3": "8"}
+        plan_labels = {"1": "حساب واحد", "2": "حسابين", "3": "3 حسابات"}
         price = prices[plan_num]
-        text = f"📋 اختر طريقة الدفع لـ DurianRCS ({'حساب واحد' if plan_num=='1' else 'حسابين' if plan_num=='2' else '3 حسابات'}):\n🔹 قيمة الاشتراك : {price}$"
+        label = plan_labels[plan_num]
+        text = (
+            f"📦 الخطة المختارة: **{label}**\n"
+            f"💰 القيمة: **{price}$** / شهر\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏦 اختر طريقة الدفع:"
+        )
         keyboard = [
-            [InlineKeyboardButton(f"الدفع ب USDT (Binance)", callback_data=f"pay_usdt_{plan_num}")],
-            [InlineKeyboardButton(f"الدفع ب TRX (Tron)", callback_data=f"pay_trx_{plan_num}")],
+            [InlineKeyboardButton("💵 USDT (Binance/TRC20)", callback_data=f"pay_usdt_{plan_num}")],
+            [InlineKeyboardButton("🔷 TRX (Tron)", callback_data=f"pay_trx_{plan_num}")],
         ]
-        await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.message.edit_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
         return
 
     elif query.data.startswith("pay_"):
@@ -995,9 +1017,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # رد للمستخدم
         text = (
-            f"💰 لإيداع {amount} {currency}، يرجى إرسال المبلغ إلى العنوان التالي خلال 10 دقائق:\n\n"
-            f"<code>{wallet}</code>\n\n"
-            f"✅ سيتم تفعيل الاشتراك فورًا بعد وصول {amount} {currency}"
+            f"📋 تفاصيل الدفع\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"💰 المبلغ المطلوب: <b>{amount} {currency}</b>\n"
+            f"⏰ المهلة: 10 دقائق فقط\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📲 أرسل المبلغ إلى العنوان:\n"
+            f"<code>{wallet}</code>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"✅ التفعيل فوري بعد تأكيد الإدارة"
         )
         try:
             await query.message.edit_text(text, parse_mode="HTML")
@@ -1045,30 +1073,45 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             success = await bot_manager.start_bot(user_id, token)
             if success:
                 text = (
-                    f"✅ تم تشغيل البوت بنجاح!\n"
-                    f"🔹 نوع البوت: DurianRCS ({bot_type})\n\n"
-                    f"⚠️ اذا كان بوتك DURIAN ولم يتم تشغيل البوت انتظر 5 دقائق لا تقم بإيقافه"
+                    f"🚀 تم تشغيل بوتك بنجاح!\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📦 الخطة: DurianRCS ({bot_type})\n"
+                    f"✅ البوت يعمل الآن في الخلفية\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"💡 توجه لبوتك الفرعي لبدء الصيد"
                 )
                 await query.message.reply_text(text)
             else:
-                await query.message.reply_text("ℹ️ البوت الفرعي يعمل بالفعل في الخلفية.")
+                await query.answer("ℹ️ البوت يعمل بالفعل!", show_alert=True)
             await show_dashboard(update, user_id, user_name)
     elif query.data == "stop_bot":
         if not token:
-            await query.message.reply_text("❌ ليس لديك بوت نشط لإيقافه.")
+            await query.answer("❌ لا يوجد بوت نشط.", show_alert=True)
         else:
-            await query.message.reply_text("⏳ جاري إيقاف البوت، يرجى الانتظار...")
             await bot_manager.stop_bot(user_id)
-            await query.message.reply_text("🛑 تم إيقاف البوت بنجاح.")
+            await query.answer("🛑 تم إيقاف البوت بنجاح.", show_alert=True)
             await show_dashboard(update, user_id, user_name)
     elif query.data == "renew_subscription":
         await query.message.reply_text(
-            f"⚙️ **لتجديد اشتراكك الشهري:**\n\n"
-            f"يرجى التواصل مع الإدارة مباشرة وتزويدهم بالمعرف الخاص بك لتفعيل باقتك:\n"
-            f"🆔 معرف حسابك: `{user_id}`", parse_mode="Markdown"
+            f"🔄 **تجديد الاشتراك**\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"تواصل مع الإدارة وأرسل معرفك:\n"
+            f"🆔 `{user_id}`", parse_mode="Markdown"
         )
-    elif query.data in ["contact_support", "unban_bot"]:
-        await query.message.reply_text("ℹ️ هذا الخيار قيد التهيئة الفنية حالياً.")
+    elif query.data == "contact_support":
+        await query.message.reply_text(
+            f"💬 **الدعم الفني**\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"معرفك: `{user_id}`\n"
+            f"أرسل معرفك مع وصف مشكلتك للإدارة", parse_mode="Markdown"
+        )
+    elif query.data == "unban_bot":
+        await query.message.reply_text(
+            f"🔓 **فك الحظر**\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"تواصل مع الإدارة وأرسل معرفك:\n"
+            f"🆔 `{user_id}`", parse_mode="Markdown"
+        )
 
 async def safe_restore():
     try:

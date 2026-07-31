@@ -831,7 +831,13 @@ def update_country_settings(user_id, country_code, number_type=None, session_sta
 def get_country_settings(user_id, country_code):
     row = db_execute("SELECT number_type, session_status FROM user_countries WHERE user_id = %s AND country_name = %s", (user_id, country_code), commit=False, fetch='one')
     if row:
-        return {"number_type": row[0] or "all", "session_status": row[1] or "all"}
+        nt = row[0] or "all"
+        ss = row[1] or "all"
+        if ss == "no":
+            ss = "no_session"
+        elif ss == "has":
+            ss = "has_session"
+        return {"number_type": nt, "session_status": ss}
     return {"number_type": "all", "session_status": "all"}
 
 
